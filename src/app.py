@@ -64,14 +64,13 @@ async def message_stream(
     request: Request, session_id: str = "72403149-969a-456c-a4c9-c672f3540d4c"
 ):
     return EventSourceResponse(
-        event_generator(request, session_id)
+        event_generator(request, session_id),
+        ping=5000000,
     )  # TODO: read about this func
 
 
 @app.post("/publish")
-async def publish_message(
-    message: str, session_id: str = "72403149-969a-456c-a4c9-c672f3540d4c"
-):
+async def publish_message(message: str, session_id: str = "72403149-969a-456c-a4c9-c672f3540d4c"):
     format_message = {
         "event": "new_message",
         "retry": 15000,  # Retry timeout in milliseconds
