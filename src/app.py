@@ -28,12 +28,16 @@ async def shutdown_event():
 
 @app.get("/")
 async def read_index():
+    # This is only test, in the project html resourse will loaded by fronted-server. Ant this
+    # fronted-server will `knokcs` to api in this backend server.
     return FileResponse("index.html")
 
 
 async def event_generator(request: Request, session_id: str):
     """Listen for Redis pub/sub messages and yield SSE events"""
     pubsub = redis_client.pubsub()
+
+    # subscribe to publisher with game session_id
     await pubsub.subscribe(str(session_id))
 
     try:
@@ -42,8 +46,10 @@ async def event_generator(request: Request, session_id: str):
                 break
 
             try:
-                message = await pubsub.get_message(timeout=10000000)
-                logger.debug(message["data"])
+                # await new message from publisher, generator
+                # will stoped unless new message will comed.
+                message = await pubsub.get_message(timeout=None)
+
                 if message and message.get("type") == "message":
                     yield {
                         "event": "new_message",
@@ -59,27 +65,32 @@ async def event_generator(request: Request, session_id: str):
         await pubsub.close()
 
 
-@app.get("/stream")
-async def message_stream(
-    request: Request, session_id: str = "72403149-969a-456c-a4c9-c672f3540d4c"
-):
+@app.get("/stream/{session_id}")
+async def message_stream(request: Request, session_id: uuid.UUID):
+    # TODO: read about this func and compare with StreamingResponse by fastapi.responses
+    # Read about this: https://medium.com/@nandagopal05/server-sent-events-with-python-fastapi-f1960e0c8e4b
     return EventSourceResponse(
-        event_generator(request, session_id),
-        ping=5000000,
-    )  # TODO: read about this func
+        event_generator(
+            request,
+            str(session_id),
+        )
+    )
 
 
 @app.post("/publish")
-async def publish_message(message: str, session_id: str = "72403149-969a-456c-a4c9-c672f3540d4c"):
-    format_message = {
-        "event": "new_message",
-        "retry": 15000,  # Retry timeout in milliseconds
-        "data": message,
-        "id": str(uuid.uuid4()),
-    }
+async def publish_message(message: str, session_id: str):
+    """
+    Publish message in the redis pub, thats declared by session_id
+
+    :param message: message to publish
+    :param session_id: name of publish channel
+    """
     await redis_client.publish(str(session_id), message)
-    return format_message
+
+    return {
+        "success": True,
+    }
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", reload=True)
+    uvicorn.run("app:app", reload=True)

@@ -37,8 +37,11 @@
     }
   </style>
 </head>
+
 <body>
   <h1>Server-Sent Events</h1>
+  <input id="session_id" name="session_id" value="72403149-969a-456c-a4c9-c672f3540d4c">
+  <button type="submit" id="save_button" onclick="save_session_id()">Choose</button>
   <table>
     <thead>
       <tr>
@@ -49,15 +52,25 @@
     <tbody id="data-list"></tbody>
   </table>
 
-  <script>
-    const dataList = document.getElementById('data-list');
-    const eventSource = new EventSource('/stream');
-    eventSource.addEventListener('new_message', event => {
-      message = event.data;
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${event.lastEventId}</td><td>${message}</td>`;
-      dataList.appendChild(row);
-    });
-  </script>
 </body>
+
+<script>
+    const save_session_id = () => {
+        const session_id = document.getElementById('session_id').value;
+        const button_submit_session = document.getElementById('save_button');
+        button_submit_session.disabled = true;
+
+        const dataList = document.getElementById('data-list');
+        const eventSource = new EventSource(`/stream/${session_id}`);
+
+        eventSource.addEventListener('new_message', event => {
+            message = event.data;
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${event.lastEventId}</td><td>${message}</td>`;
+            dataList.appendChild(row);
+        });
+
+        console.log("Соединение установлено с сессией: ", session_id)
+    }
+</script>
 </html>
